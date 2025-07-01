@@ -1,5 +1,10 @@
 import { v } from "convex/values";
-import { action, internalAction, internalMutation, internalQuery } from "./_generated/server";
+import {
+  action,
+  internalAction,
+  internalMutation,
+  internalQuery,
+} from "./_generated/server";
 import { internal } from "./_generated/api";
 
 export const scrapeWebsite = action({
@@ -16,7 +21,7 @@ export const scrapeWebsite = action({
     try {
       const response = await fetch(website.url, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; RSS-Generator/1.0)',
+          "User-Agent": "Mozilla/5.0 (compatible; RSS-Generator/1.0)",
         },
       });
 
@@ -25,7 +30,7 @@ export const scrapeWebsite = action({
       }
 
       const html = await response.text();
-      
+
       // Parse HTML and extract articles
       const articles = await parseArticles(html, website);
 
@@ -45,7 +50,10 @@ export const scrapeWebsite = action({
       return { success: true, articlesFound: articles.length };
     } catch (error) {
       console.error(`Error scraping ${website.url}:`, error);
-      return { success: false, error: error instanceof Error ? error.message : String(error) };
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
     }
   },
 });
@@ -98,32 +106,67 @@ export const updateLastChecked = internalMutation({
 // Simple HTML parsing function (in a real app, you'd use a proper HTML parser)
 async function parseArticles(html: string, website: any) {
   const articles = [];
-  
+
   // Basic regex patterns for common article structures
   const titlePattern = /<h[1-6][^>]*>(.*?)<\/h[1-6]>/gi;
   const linkPattern = /<a[^>]+href=["']([^"']+)["'][^>]*>(.*?)<\/a>/gi;
-  
+
   let match;
   let articleIndex = 0;
-  
+
+  // Collect all links in the HTML for later lookup
+  const links: { href: string; text: string; index: number }[] = [];
+  while ((match = linkPattern.exec(html)) !== null) {
+    links.push({ href: match[1], text: match[2], index: match.index });
+  }
+
   // Extract titles and create basic articles
   while ((match = titlePattern.exec(html)) !== null && articleIndex < 20) {
-    const title = match[1].replace(/<[^>]*>/g, '').trim();
-    
-    if (title.length > 10) { // Filter out very short titles
-      const guid = `${website.url}_${title.replace(/\W/g, '_')}_${Date.now()}`;
-      
+    const title = match[1].replace(/<[^>]*>/g, "").trim();
+    const titleIndex = match.index;
+
+    if (title.length > 10) {
+      // Filter out very short titles
+      // Find the closest link after the title in the HTML
+      let articleLink = website.url;
+      let minDistance = Infinity;
+      for (const link of links) {
+        const distance = Math.abs(link.index - titleIndex);
+        if (distance < minDistance && link.text && title.includes(link.text)) {
+          articleLink = link.href;
+          minDistance = distance;
+        }
+      }
+      // If no link text matches, just use the first link after the title
+      if (articleLink === website.url) {
+        for (const link of links) {
+          if (link.index > titleIndex) {
+            articleLink = link.href;
+            break;
+          }
+        }
+      }
+      // If the link is relative, resolve it against the website URL
+      if (articleLink && !/^https?:\/\//i.test(articleLink)) {
+        try {
+          articleLink = new URL(articleLink, website.url).href;
+        } catch {
+          // Ignore URL resolution errors and keep the original articleLink
+        }
+      }
+      const guid = `${website.url}_${title.replace(/\W/g, "_")}_${Date.now()}`;
+
       articles.push({
         title,
-        link: website.url, // Default to website URL
+        link: articleLink,
         description: title,
-        pubDate: Date.now() - (articleIndex * 60000), // Stagger dates
+        pubDate: Date.now() - articleIndex * 60000, // Stagger dates
         guid,
       });
-      
+
       articleIndex++;
     }
   }
-  
+
   return articles;
 }
