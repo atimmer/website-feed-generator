@@ -7,54 +7,98 @@ import {
 } from "./_generated/server";
 import { internal } from "./_generated/api";
 
+// Import OpenAI SDK
+import OpenAI from "openai";
+
 export const scrapeWebsite = action({
   args: { websiteId: v.id("websites") },
   handler: async (ctx, args) => {
+    // Get website info
     const website = await ctx.runQuery(internal.scraper.getWebsiteInternal, {
       websiteId: args.websiteId,
     });
+    if (!website) throw new Error("Website not found");
 
-    if (!website) {
-      throw new Error("Website not found");
+    // Fetch HTML
+    const response = await fetch(website.url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; RSS-Generator/2.0)",
+      },
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    const html = await response.text();
+
+    // Prepare LLM prompt
+    const prompt = `You are an expert web scraper. Given the following HTML from a website, extract up to 20 recent articles as JSON objects with the following fields: title (string), link (string, absolute URL), description (string, optional), pubDate (number, ms since epoch), guid (string, unique per article). Use the website URL as context: ${website.url}. Return a JSON array. If you can't find articles, return an empty array.\n\nHTML:\n${html}`;
+
+    // Use OpenRouter via OpenAI SDK
+    const openai = new OpenAI({
+      apiKey: process.env.OPENROUTER_API_KEY,
+      baseURL: "https://openrouter.ai/api/v1",
+      defaultHeaders: {
+        "X-Title": "Website Feed Generator",
+      },
+    });
+
+    // Call LLM
+    const completion = await openai.chat.completions.create({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        { role: "system", content: "You are a helpful assistant." },
+        { role: "user", content: prompt },
+      ],
+      response_format: { type: "json_object" },
+      max_tokens: 4096,
+    });
+
+    let articles: any[] = [];
+    try {
+      // Try to parse the LLM's response as JSON
+      const content = completion.choices[0].message.content;
+      console.log(content);
+      if (typeof content !== "string") {
+        throw new Error("LLM response content is null or not a string");
+      }
+      articles = JSON.parse(content);
+      if (!Array.isArray(articles)) throw new Error("Not an array");
+    } catch (e) {
+      throw new Error(
+        "Failed to parse LLM response as JSON: " +
+          (e instanceof Error ? e.message : String(e))
+      );
     }
 
-    try {
-      const response = await fetch(website.url, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (compatible; RSS-Generator/1.0)",
-        },
-      });
+    console.log(articles);
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const html = await response.text();
-
-      // Parse HTML and extract articles
-      const articles = await parseArticles(html, website);
-
-      // Save new articles
-      for (const article of articles) {
+    // Save new articles
+    let savedCount = 0;
+    for (const article of articles) {
+      if (
+        typeof article.title === "string" &&
+        typeof article.link === "string" &&
+        typeof article.pubDate === "number" &&
+        typeof article.guid === "string"
+      ) {
         await ctx.runMutation(internal.scraper.saveArticle, {
           websiteId: args.websiteId,
-          ...article,
+          title: article.title,
+          link: article.link,
+          description: article.description,
+          pubDate: article.pubDate,
+          guid: article.guid,
         });
+        savedCount++;
       }
-
-      // Update last checked time
-      await ctx.runMutation(internal.scraper.updateLastChecked, {
-        websiteId: args.websiteId,
-      });
-
-      return { success: true, articlesFound: articles.length };
-    } catch (error) {
-      console.error(`Error scraping ${website.url}:`, error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-      };
     }
+
+    // Update last checked time
+    await ctx.runMutation(internal.scraper.updateLastChecked, {
+      websiteId: args.websiteId,
+    });
+
+    return { success: true, articlesFound: savedCount };
   },
 });
 
@@ -80,7 +124,6 @@ export const saveArticle = internalMutation({
       .query("articles")
       .withIndex("by_guid", (q) => q.eq("guid", args.guid))
       .first();
-
     if (!existing) {
       await ctx.db.insert("articles", {
         websiteId: args.websiteId,
@@ -102,71 +145,3 @@ export const updateLastChecked = internalMutation({
     });
   },
 });
-
-// Simple HTML parsing function (in a real app, you'd use a proper HTML parser)
-async function parseArticles(html: string, website: any) {
-  const articles = [];
-
-  // Basic regex patterns for common article structures
-  const titlePattern = /<h[1-6][^>]*>(.*?)<\/h[1-6]>/gi;
-  const linkPattern = /<a[^>]+href=["']([^"']+)["'][^>]*>(.*?)<\/a>/gi;
-
-  let match;
-  let articleIndex = 0;
-
-  // Collect all links in the HTML for later lookup
-  const links: { href: string; text: string; index: number }[] = [];
-  while ((match = linkPattern.exec(html)) !== null) {
-    links.push({ href: match[1], text: match[2], index: match.index });
-  }
-
-  // Extract titles and create basic articles
-  while ((match = titlePattern.exec(html)) !== null && articleIndex < 20) {
-    const title = match[1].replace(/<[^>]*>/g, "").trim();
-    const titleIndex = match.index;
-
-    if (title.length > 10) {
-      // Filter out very short titles
-      // Find the closest link after the title in the HTML
-      let articleLink = website.url;
-      let minDistance = Infinity;
-      for (const link of links) {
-        const distance = Math.abs(link.index - titleIndex);
-        if (distance < minDistance && link.text && title.includes(link.text)) {
-          articleLink = link.href;
-          minDistance = distance;
-        }
-      }
-      // If no link text matches, just use the first link after the title
-      if (articleLink === website.url) {
-        for (const link of links) {
-          if (link.index > titleIndex) {
-            articleLink = link.href;
-            break;
-          }
-        }
-      }
-      // If the link is relative, resolve it against the website URL
-      if (articleLink && !/^https?:\/\//i.test(articleLink)) {
-        try {
-          articleLink = new URL(articleLink, website.url).href;
-        } catch {
-          // Ignore URL resolution errors and keep the original articleLink
-        }
-      }
-      const guid = `${website.url}_${title.replace(/\W/g, "_")}_${Date.now()}`;
-
-      articles.push({
-        title,
-        link: articleLink,
-        description: title,
-        pubDate: Date.now() - articleIndex * 60000, // Stagger dates
-        guid,
-      });
-
-      articleIndex++;
-    }
-  }
-
-  return articles;
-}
