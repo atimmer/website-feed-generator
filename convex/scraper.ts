@@ -57,7 +57,6 @@ export const scrapeWebsite = action({
     try {
       // Try to parse the LLM's response as JSON
       const content = completion.choices[0].message.content;
-      console.log(content);
       if (typeof content !== "string") {
         throw new Error("LLM response content is null or not a string");
       }
@@ -69,8 +68,6 @@ export const scrapeWebsite = action({
           (e instanceof Error ? e.message : String(e))
       );
     }
-
-    console.log(articles);
 
     // Save new articles
     let savedCount = 0;
@@ -126,6 +123,15 @@ export const saveArticle = internalMutation({
       .first();
     if (!existing) {
       await ctx.db.insert("articles", {
+        websiteId: args.websiteId,
+        title: args.title,
+        link: args.link,
+        description: args.description,
+        pubDate: args.pubDate,
+        guid: args.guid,
+      });
+    } else {
+      await ctx.db.patch(existing._id, {
         websiteId: args.websiteId,
         title: args.title,
         link: args.link,
