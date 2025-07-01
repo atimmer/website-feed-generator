@@ -5,18 +5,18 @@ import { api } from "./_generated/api";
 const http = httpRouter();
 
 http.route({
-  path: "/rss/:feedId",
+  pathPrefix: "/rss/",
   method: "GET",
   handler: httpAction(async (ctx, request) => {
     const url = new URL(request.url);
-    const feedId = url.pathname.split('/').pop();
-    
+    const feedId = url.pathname.split("/").pop();
+
     if (!feedId) {
       return new Response("Feed ID required", { status: 400 });
     }
 
     const rssXML = await ctx.runQuery(api.rss.generateRSSXML, { feedId });
-    
+
     if (!rssXML) {
       return new Response("Feed not found", { status: 404 });
     }
