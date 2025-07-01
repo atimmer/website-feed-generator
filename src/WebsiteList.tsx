@@ -29,7 +29,11 @@ export function WebsiteList({ websites, onScrapeNow }: WebsiteListProps) {
   );
 
   const handleRemove = async (websiteId: string, title: string) => {
-    if (confirm(`Are you sure you want to remove "${title}"? This will delete all associated articles.`)) {
+    if (
+      confirm(
+        `Are you sure you want to remove "${title}"? This will delete all associated articles.`
+      )
+    ) {
       try {
         await removeWebsite({ websiteId: websiteId as Id<"websites"> });
         toast.success("Website removed successfully");
@@ -51,20 +55,23 @@ export function WebsiteList({ websites, onScrapeNow }: WebsiteListProps) {
   };
 
   const getRSSUrl = (websiteId: string) => {
-    const baseUrl = window.location.origin;
+    const baseUrl = import.meta.env.VITE_CONVEX_URL;
     return `${baseUrl}/rss/feed_${websiteId}`;
   };
 
   const copyRSSUrl = (websiteId: string) => {
     const url = getRSSUrl(websiteId);
-    navigator.clipboard.writeText(url);
+    void navigator.clipboard.writeText(url);
     toast.success("RSS URL copied to clipboard!");
   };
 
   return (
     <div className="space-y-4">
       {websites.map((website) => (
-        <div key={website._id} className="bg-white p-6 rounded-lg shadow-sm border">
+        <div
+          key={website._id}
+          className="bg-white p-6 rounded-lg shadow-sm border"
+        >
           <div className="flex justify-between items-start mb-4">
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
@@ -81,18 +88,21 @@ export function WebsiteList({ websites, onScrapeNow }: WebsiteListProps) {
               </div>
               <p className="text-gray-600 text-sm mb-2">{website.url}</p>
               {website.description && (
-                <p className="text-gray-500 text-sm mb-2">{website.description}</p>
+                <p className="text-gray-500 text-sm mb-2">
+                  {website.description}
+                </p>
               )}
               <div className="flex items-center gap-4 text-sm text-gray-500">
                 <span>{website.articlesCount} articles</span>
                 {website.lastChecked && (
                   <span>
-                    Last checked: {new Date(website.lastChecked).toLocaleDateString()}
+                    Last checked:{" "}
+                    {new Date(website.lastChecked).toLocaleDateString()}
                   </span>
                 )}
               </div>
             </div>
-            
+
             <div className="flex gap-2">
               <button
                 onClick={() => copyRSSUrl(website._id)}
@@ -101,27 +111,31 @@ export function WebsiteList({ websites, onScrapeNow }: WebsiteListProps) {
                 Copy RSS URL
               </button>
               <button
-                onClick={() => onScrapeNow(website._id)}
+                onClick={() => void onScrapeNow(website._id)}
                 className="px-3 py-1 text-sm bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors"
               >
                 Scrape Now
               </button>
               <button
-                onClick={() => handleToggle(website._id)}
+                onClick={() => void handleToggle(website._id)}
                 className="px-3 py-1 text-sm bg-yellow-100 text-yellow-700 rounded hover:bg-yellow-200 transition-colors"
               >
                 {website.isActive ? "Pause" : "Resume"}
               </button>
               <button
-                onClick={() => setSelectedWebsite(
-                  selectedWebsite === website._id ? null : website._id
-                )}
+                onClick={() =>
+                  setSelectedWebsite(
+                    selectedWebsite === website._id ? null : website._id
+                  )
+                }
                 className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
               >
-                {selectedWebsite === website._id ? "Hide Articles" : "View Articles"}
+                {selectedWebsite === website._id
+                  ? "Hide Articles"
+                  : "View Articles"}
               </button>
               <button
-                onClick={() => handleRemove(website._id, website.title)}
+                onClick={() => void handleRemove(website._id, website.title)}
                 className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
               >
                 Remove
@@ -144,11 +158,16 @@ export function WebsiteList({ websites, onScrapeNow }: WebsiteListProps) {
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
                 </div>
               ) : articles.length === 0 ? (
-                <p className="text-gray-500 text-sm">No articles found yet. Try scraping the website.</p>
+                <p className="text-gray-500 text-sm">
+                  No articles found yet. Try scraping the website.
+                </p>
               ) : (
                 <div className="space-y-2 max-h-64 overflow-y-auto">
                   {articles.map((article) => (
-                    <div key={article._id} className="p-3 bg-gray-50 rounded text-sm">
+                    <div
+                      key={article._id}
+                      className="p-3 bg-gray-50 rounded text-sm"
+                    >
                       <h5 className="font-medium mb-1">{article.title}</h5>
                       <div className="flex justify-between items-center text-gray-500 text-xs">
                         <a
@@ -159,7 +178,9 @@ export function WebsiteList({ websites, onScrapeNow }: WebsiteListProps) {
                         >
                           View Article
                         </a>
-                        <span>{new Date(article.pubDate).toLocaleDateString()}</span>
+                        <span>
+                          {new Date(article.pubDate).toLocaleDateString()}
+                        </span>
                       </div>
                     </div>
                   ))}
