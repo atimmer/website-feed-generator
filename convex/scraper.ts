@@ -69,12 +69,12 @@ export const scrapeWebsite = action({
       );
     }
 
+    const crawlTimestamp = Date.now();
     const validArticles = articles
       .filter(
         (article) =>
           typeof article?.title === "string" &&
           typeof article?.link === "string" &&
-          typeof article?.pubDate === "number" &&
           typeof article?.guid === "string"
       )
       .map((article) => ({
@@ -84,7 +84,8 @@ export const scrapeWebsite = action({
           typeof article.description === "string"
             ? article.description
             : undefined,
-        pubDate: article.pubDate,
+        pubDate:
+          typeof article.pubDate === "number" ? article.pubDate : crawlTimestamp,
         guid: article.guid,
       }));
 
@@ -111,7 +112,7 @@ export const scrapeWebsite = action({
       success: true,
       articlesFound: savedCount,
       articles: validArticles,
-      scrapedAt: Date.now(),
+      scrapedAt: crawlTimestamp,
     };
   },
 });
