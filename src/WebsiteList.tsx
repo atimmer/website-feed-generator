@@ -17,9 +17,26 @@ interface Website {
 interface WebsiteListProps {
   websites: Website[];
   onScrapeNow: (websiteId: string) => void;
+  crawlResults: Record<
+    string,
+    {
+      scrapedAt: number;
+      articles: {
+        title: string;
+        link: string;
+        description?: string;
+        pubDate: number;
+        guid: string;
+      }[];
+    }
+  >;
 }
 
-export function WebsiteList({ websites, onScrapeNow }: WebsiteListProps) {
+export function WebsiteList({
+  websites,
+  onScrapeNow,
+  crawlResults,
+}: WebsiteListProps) {
   const [selectedWebsite, setSelectedWebsite] = useState<string | null>(null);
   const removeWebsite = useMutation(api.websites.remove);
   const toggleWebsite = useMutation(api.websites.toggle);
@@ -155,6 +172,53 @@ export function WebsiteList({ websites, onScrapeNow }: WebsiteListProps) {
                 {getRSSUrl(website._id) || "(unavailable)"}
               </code>
             </div>
+
+            {crawlResults[website._id] && (
+              <div className="mt-4 border-t pt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-medium">Latest Crawl Run</h4>
+                  <span className="text-xs text-gray-500">
+                    {new Date(
+                      crawlResults[website._id].scrapedAt
+                    ).toLocaleString()}
+                  </span>
+                </div>
+                {crawlResults[website._id].articles.length === 0 ? (
+                  <p className="text-gray-500 text-sm">
+                    No articles detected in this run.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {crawlResults[website._id].articles.map((article) => (
+                      <div
+                        key={article.guid}
+                        className="p-3 bg-gray-50 rounded text-sm"
+                      >
+                        <h5 className="font-medium mb-1">{article.title}</h5>
+                        <div className="flex justify-between items-center text-gray-500 text-xs">
+                          <a
+                            href={article.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline"
+                          >
+                            View Article
+                          </a>
+                          <span>
+                            {new Date(article.pubDate).toLocaleDateString()}
+                          </span>
+                        </div>
+                        {article.description && (
+                          <p className="mt-2 text-gray-600 text-xs">
+                            {article.description}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {selectedWebsite === website._id && (
               <div className="mt-4 border-t pt-4">

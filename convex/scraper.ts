@@ -69,25 +69,37 @@ export const scrapeWebsite = action({
       );
     }
 
+    const validArticles = articles
+      .filter(
+        (article) =>
+          typeof article?.title === "string" &&
+          typeof article?.link === "string" &&
+          typeof article?.pubDate === "number" &&
+          typeof article?.guid === "string"
+      )
+      .map((article) => ({
+        title: article.title,
+        link: article.link,
+        description:
+          typeof article.description === "string"
+            ? article.description
+            : undefined,
+        pubDate: article.pubDate,
+        guid: article.guid,
+      }));
+
     // Save new articles
     let savedCount = 0;
-    for (const article of articles) {
-      if (
-        typeof article.title === "string" &&
-        typeof article.link === "string" &&
-        typeof article.pubDate === "number" &&
-        typeof article.guid === "string"
-      ) {
-        await ctx.runMutation(internal.scraper.saveArticle, {
-          websiteId: args.websiteId,
-          title: article.title,
-          link: article.link,
-          description: article.description,
-          pubDate: article.pubDate,
-          guid: article.guid,
-        });
-        savedCount++;
-      }
+    for (const article of validArticles) {
+      await ctx.runMutation(internal.scraper.saveArticle, {
+        websiteId: args.websiteId,
+        title: article.title,
+        link: article.link,
+        description: article.description,
+        pubDate: article.pubDate,
+        guid: article.guid,
+      });
+      savedCount++;
     }
 
     // Update last checked time
@@ -95,7 +107,12 @@ export const scrapeWebsite = action({
       websiteId: args.websiteId,
     });
 
-    return { success: true, articlesFound: savedCount };
+    return {
+      success: true,
+      articlesFound: savedCount,
+      articles: validArticles,
+      scrapedAt: Date.now(),
+    };
   },
 });
 

@@ -8,18 +8,36 @@ import { WebsiteList } from "./WebsiteList";
 
 export function WebsiteManager() {
   const [showAddForm, setShowAddForm] = useState(false);
+  const [crawlResults, setCrawlResults] = useState<
+    Record<
+      string,
+      {
+        scrapedAt: number;
+        articles: {
+          title: string;
+          link: string;
+          description?: string;
+          pubDate: number;
+          guid: string;
+        }[];
+      }
+    >
+  >({});
   const websites = useQuery(api.websites.list) || [];
   const scrapeWebsite = useAction(api.scraper.scrapeWebsite);
 
   const handleScrapeNow = async (websiteId: string) => {
     try {
+      const scrapePromise = scrapeWebsite({
+        websiteId: websiteId as Id<"websites">,
+      });
       toast.promise(
-        scrapeWebsite({ websiteId: websiteId as Id<"websites"> }),
+        scrapePromise,
         {
           loading: "Scraping website...",
           success: (result) => {
             if (result.success) {
-              return `Found ${result.articlesFound} articles`;
+              return `Detected ${result.articlesFound} articles in this run`;
             } else {
               throw new Error(result.error);
             }
@@ -27,6 +45,16 @@ export function WebsiteManager() {
           error: (error) => `Failed to scrape: ${error.message}`,
         }
       );
+      const result = await scrapePromise;
+      if (result.success) {
+        setCrawlResults((prev) => ({
+          ...prev,
+          [websiteId]: {
+            scrapedAt: result.scrapedAt ?? Date.now(),
+            articles: result.articles ?? [],
+          },
+        }));
+      }
     } catch (error) {
       console.error("Scraping error:", error);
     }
@@ -64,7 +92,11 @@ export function WebsiteManager() {
           </button>
         </div>
       ) : (
-        <WebsiteList websites={websites} onScrapeNow={handleScrapeNow} />
+        <WebsiteList
+          websites={websites}
+          onScrapeNow={handleScrapeNow}
+          crawlResults={crawlResults}
+        />
       )}
     </div>
   );
