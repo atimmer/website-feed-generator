@@ -143,6 +143,64 @@ export const toggle = mutation({
   },
 });
 
+export const update = mutation({
+  args: {
+    websiteId: v.id("websites"),
+    url: v.string(),
+    title: v.string(),
+    description: v.optional(v.string()),
+    selector: v.optional(v.string()),
+    titleSelector: v.optional(v.string()),
+    linkSelector: v.optional(v.string()),
+    dateSelector: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Must be logged in");
+    }
+
+    const website = await ctx.db.get(args.websiteId);
+    if (!website || website.userId !== userId) {
+      throw new Error("Website not found or access denied");
+    }
+
+    const existing = await ctx.db
+      .query("websites")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .filter((q) => q.eq(q.field("url"), args.url))
+      .first();
+
+    if (existing && existing._id !== args.websiteId) {
+      throw new Error("Website already exists in your feeds");
+    }
+
+    await ctx.db.patch(args.websiteId, {
+      url: args.url,
+      title: args.title,
+      description: args.description,
+      selector: args.selector,
+      titleSelector: args.titleSelector,
+      linkSelector: args.linkSelector,
+      dateSelector: args.dateSelector,
+    });
+
+    const rssFeeds = await ctx.db
+      .query("rssFeeds")
+      .withIndex("by_website", (q) => q.eq("websiteId", args.websiteId))
+      .collect();
+
+    for (const feed of rssFeeds) {
+      await ctx.db.patch(feed._id, {
+        title: args.title,
+        description: args.description || `RSS feed for ${args.title}`,
+        link: args.url,
+        lastBuildDate: Date.now(),
+      });
+    }
+  },
+});
+
 export const getArticles = query({
   args: { websiteId: v.id("websites") },
   handler: async (ctx, args) => {

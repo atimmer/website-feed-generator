@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { toast } from "sonner";
 import { Id } from "../convex/_generated/dataModel";
+import { EditWebsiteForm } from "./EditWebsiteForm";
 
 interface Website {
   _id: Id<"websites">;
@@ -38,6 +39,7 @@ export function WebsiteList({
   crawlResults,
 }: WebsiteListProps) {
   const [selectedWebsite, setSelectedWebsite] = useState<string | null>(null);
+  const [editingWebsite, setEditingWebsite] = useState<string | null>(null);
   const removeWebsite = useMutation(api.websites.remove);
   const toggleWebsite = useMutation(api.websites.toggle);
   const articles = useQuery(
@@ -147,6 +149,16 @@ export function WebsiteList({
                 </button>
                 <button
                   onClick={() =>
+                    setEditingWebsite(
+                      editingWebsite === website._id ? null : website._id
+                    )
+                  }
+                  className="px-3 py-1 text-sm bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 transition-colors"
+                >
+                  {editingWebsite === website._id ? "Close Settings" : "Edit Settings"}
+                </button>
+                <button
+                  onClick={() =>
                     setSelectedWebsite(
                       selectedWebsite === website._id ? null : website._id
                     )
@@ -172,6 +184,16 @@ export function WebsiteList({
                 {getRSSUrl(website._id) || "(unavailable)"}
               </code>
             </div>
+
+            {editingWebsite === website._id && (
+              <div className="mt-4 border-t pt-4">
+                <EditWebsiteForm
+                  website={website}
+                  onCancel={() => setEditingWebsite(null)}
+                  onSuccess={() => setEditingWebsite(null)}
+                />
+              </div>
+            )}
 
             {crawlResults[website._id] && (
               <div className="mt-4 border-t pt-4">

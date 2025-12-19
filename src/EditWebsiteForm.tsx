@@ -2,54 +2,66 @@ import { useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { toast } from "sonner";
+import { Id } from "../convex/_generated/dataModel";
 
-interface AddWebsiteFormProps {
+interface WebsiteSettings {
+  _id: Id<"websites">;
+  url: string;
+  title: string;
+  description?: string;
+}
+
+interface EditWebsiteFormProps {
+  website: WebsiteSettings;
+  onCancel: () => void;
   onSuccess: () => void;
 }
 
-export function AddWebsiteForm({ onSuccess }: AddWebsiteFormProps) {
-  const [url, setUrl] = useState("");
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+export function EditWebsiteForm({
+  website,
+  onCancel,
+  onSuccess,
+}: EditWebsiteFormProps) {
+  const [url, setUrl] = useState(website.url);
+  const [title, setTitle] = useState(website.title);
+  const [description, setDescription] = useState(website.description ?? "");
 
-  const addWebsite = useMutation(api.websites.add);
+  const updateWebsite = useMutation(api.websites.update);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!url || !title) {
       toast.error("URL and title are required");
       return;
     }
 
     try {
-      await addWebsite({
+      await updateWebsite({
+        websiteId: website._id,
         url: url.trim(),
         title: title.trim(),
         description: description.trim() || undefined,
       });
-      
-      toast.success("Website added successfully!");
-      setUrl("");
-      setTitle("");
-      setDescription("");
+
+      toast.success("Website updated successfully!");
       onSuccess();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to add website");
+      toast.error(error instanceof Error ? error.message : "Failed to update website");
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <h3 className="text-lg font-medium">Add New Website</h3>
-      
+      <h4 className="text-base font-medium">Edit Feed Settings</h4>
+
       <div>
-        <label htmlFor="url" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="edit-url" className="block text-sm font-medium text-gray-700 mb-1">
           Website URL *
         </label>
         <input
           type="url"
-          id="url"
+          id="edit-url"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder="https://example.com"
@@ -59,12 +71,12 @@ export function AddWebsiteForm({ onSuccess }: AddWebsiteFormProps) {
       </div>
 
       <div>
-        <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="edit-title" className="block text-sm font-medium text-gray-700 mb-1">
           Feed Title *
         </label>
         <input
           type="text"
-          id="title"
+          id="edit-title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="My Favorite Blog"
@@ -74,11 +86,11 @@ export function AddWebsiteForm({ onSuccess }: AddWebsiteFormProps) {
       </div>
 
       <div>
-        <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="edit-description" className="block text-sm font-medium text-gray-700 mb-1">
           Description
         </label>
         <textarea
-          id="description"
+          id="edit-description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="RSS feed for my favorite blog posts"
@@ -92,11 +104,11 @@ export function AddWebsiteForm({ onSuccess }: AddWebsiteFormProps) {
           type="submit"
           className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
         >
-          Add Website
+          Save Changes
         </button>
         <button
           type="button"
-          onClick={onSuccess}
+          onClick={onCancel}
           className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
         >
           Cancel
