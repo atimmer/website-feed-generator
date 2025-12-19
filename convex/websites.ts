@@ -37,6 +37,7 @@ export const add = mutation({
     url: v.string(),
     title: v.string(),
     description: v.optional(v.string()),
+    customInstructions: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -59,6 +60,7 @@ export const add = mutation({
       url: args.url,
       title: args.title,
       description: args.description,
+      customInstructions: args.customInstructions,
       userId,
       isActive: true,
     });
@@ -141,6 +143,7 @@ export const update = mutation({
     url: v.string(),
     title: v.string(),
     description: v.optional(v.string()),
+    customInstructions: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -167,6 +170,7 @@ export const update = mutation({
       url: args.url,
       title: args.title,
       description: args.description,
+      customInstructions: args.customInstructions,
     });
 
     const rssFeeds = await ctx.db

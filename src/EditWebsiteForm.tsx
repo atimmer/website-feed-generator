@@ -9,6 +9,7 @@ interface WebsiteSettings {
   url: string;
   title: string;
   description?: string;
+  customInstructions?: string;
 }
 
 interface EditWebsiteFormProps {
@@ -25,6 +26,9 @@ export function EditWebsiteForm({
   const [url, setUrl] = useState(website.url);
   const [title, setTitle] = useState(website.title);
   const [description, setDescription] = useState(website.description ?? "");
+  const [customInstructions, setCustomInstructions] = useState(
+    website.customInstructions ?? ""
+  );
 
   const updateWebsite = useMutation(api.websites.update);
 
@@ -42,6 +46,7 @@ export function EditWebsiteForm({
         url: url.trim(),
         title: title.trim(),
         description: description.trim() || undefined,
+        customInstructions: customInstructions.trim() || undefined,
       });
 
       toast.success("Website updated successfully!");
@@ -95,6 +100,23 @@ export function EditWebsiteForm({
           onChange={(e) => setDescription(e.target.value)}
           placeholder="RSS feed for my favorite blog posts"
           rows={2}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+
+      <div>
+        <label
+          htmlFor="edit-custom-instructions"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
+          Custom instructions
+        </label>
+        <textarea
+          id="edit-custom-instructions"
+          value={customInstructions}
+          onChange={(e) => setCustomInstructions(e.target.value)}
+          placeholder="Example: Only include blog posts, ignore job listings."
+          rows={3}
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>

@@ -16,6 +16,8 @@ This project is a Vite + React frontend with a Convex backend. It generates webs
 - `convex/`: Convex schema, functions, and backend utilities.
 - `setup.mjs`: local bootstrap script for environment/config prep.
 
+Website settings include an optional "custom instructions" field that is stored per site and appended to the scraping prompt.
+
 ## Dev flow
 
 - `pnpm dev` runs both the frontend and Convex dev server.

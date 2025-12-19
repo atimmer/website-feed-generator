@@ -30,8 +30,14 @@ export const scrapeWebsite = action({
     }
     const html = await response.text();
 
+    const customInstructions =
+      typeof website.customInstructions === "string" &&
+      website.customInstructions.trim().length > 0
+        ? `\n\nCustom instructions from the user:\n${website.customInstructions.trim()}`
+        : "";
+
     // Prepare LLM prompt
-    const prompt = `You are an expert web scraper. Given the following HTML from a website, extract up to 20 recent articles as JSON objects with the following fields: title (string), link (string, absolute URL), description (string, optional), pubDate (number, ms since epoch), guid (string, unique per article). Use the website URL as context: ${website.url}. Return a JSON array. If you can't find articles, return an empty array.\n\nHTML:\n${html}`;
+    const prompt = `You are an expert web scraper. Given the following HTML from a website, extract up to 20 recent articles as JSON objects with the following fields: title (string), link (string, absolute URL), description (string, optional), pubDate (number, ms since epoch), guid (string, unique per article). Use the website URL as context: ${website.url}. Return a JSON array. If you can't find articles, return an empty array.${customInstructions}\n\nHTML:\n${html}`;
 
     // Use OpenRouter via OpenAI SDK
     const openai = new OpenAI({

@@ -7,6 +7,8 @@ const applicationTables = {
     url: v.string(),
     title: v.string(),
     description: v.optional(v.string()),
+    dateSelector: v.optional(v.string()),
+    customInstructions: v.optional(v.string()),
     userId: v.id("users"),
     lastChecked: v.optional(v.number()),
     isActive: v.boolean(),

@@ -10,6 +10,7 @@ interface Website {
   url: string;
   title: string;
   description?: string;
+  customInstructions?: string;
   isActive: boolean;
   lastChecked?: number;
   articlesCount: number;
