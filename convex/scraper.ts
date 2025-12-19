@@ -54,15 +54,29 @@ export const scrapeWebsite = action({
     });
 
     let articles: any[] = [];
+    let rawContent: string | null = null;
     try {
       // Try to parse the LLM's response as JSON
-      const content = completion.choices[0].message.content;
+      const content = completion.choices[0]?.message?.content;
       if (typeof content !== "string") {
         throw new Error("LLM response content is null or not a string");
       }
+      rawContent = content;
       articles = JSON.parse(content);
       if (!Array.isArray(articles)) throw new Error("Not an array");
     } catch (e) {
+      if (rawContent) {
+        const preview =
+          rawContent.length > 5000
+            ? `${rawContent.slice(0, 5000)}... (truncated)`
+            : rawContent;
+        console.error("LLM output (raw) for failed parse:", preview);
+      } else {
+        console.error(
+          "LLM output missing or non-string when parsing failed:",
+          completion.choices[0]?.message?.content
+        );
+      }
       throw new Error(
         "Failed to parse LLM response as JSON: " +
           (e instanceof Error ? e.message : String(e))
@@ -85,7 +99,9 @@ export const scrapeWebsite = action({
             ? article.description
             : undefined,
         pubDate:
-          typeof article.pubDate === "number" ? article.pubDate : crawlTimestamp,
+          typeof article.pubDate === "number"
+            ? article.pubDate
+            : crawlTimestamp,
         guid: article.guid,
       }));
 
