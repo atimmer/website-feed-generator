@@ -10,10 +10,6 @@ const applicationTables = {
     userId: v.id("users"),
     lastChecked: v.optional(v.number()),
     isActive: v.boolean(),
-    selector: v.optional(v.string()), // CSS selector for articles
-    titleSelector: v.optional(v.string()),
-    linkSelector: v.optional(v.string()),
-    dateSelector: v.optional(v.string()),
   })
     .index("by_user", ["userId"])
     .index("by_active", ["isActive"])

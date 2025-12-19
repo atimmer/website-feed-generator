@@ -37,10 +37,6 @@ export const add = mutation({
     url: v.string(),
     title: v.string(),
     description: v.optional(v.string()),
-    selector: v.optional(v.string()),
-    titleSelector: v.optional(v.string()),
-    linkSelector: v.optional(v.string()),
-    dateSelector: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -65,10 +61,6 @@ export const add = mutation({
       description: args.description,
       userId,
       isActive: true,
-      selector: args.selector,
-      titleSelector: args.titleSelector,
-      linkSelector: args.linkSelector,
-      dateSelector: args.dateSelector,
     });
 
     // Create RSS feed entry
@@ -149,10 +141,6 @@ export const update = mutation({
     url: v.string(),
     title: v.string(),
     description: v.optional(v.string()),
-    selector: v.optional(v.string()),
-    titleSelector: v.optional(v.string()),
-    linkSelector: v.optional(v.string()),
-    dateSelector: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -179,10 +167,6 @@ export const update = mutation({
       url: args.url,
       title: args.title,
       description: args.description,
-      selector: args.selector,
-      titleSelector: args.titleSelector,
-      linkSelector: args.linkSelector,
-      dateSelector: args.dateSelector,
     });
 
     const rssFeeds = await ctx.db
